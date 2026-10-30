@@ -1,0 +1,10 @@
+name = "boq"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "boq-db"
+database_id = "a0f03a09-9ac9-42cf-a7a2-3b1f669362ff"
+migrations_dir = "drizzle"

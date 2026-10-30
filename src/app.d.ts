@@ -7,6 +7,13 @@ declare global {
 			user: SessionUser | null;
 		}
 	}
+
+	// Bindings from wrangler.toml, read via `import { env } from 'cloudflare:workers'`.
+	namespace Cloudflare {
+		interface Env {
+			DB: import('@cloudflare/workers-types').D1Database;
+		}
+	}
 }
 
 export {};

@@ -1,11 +1,19 @@
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
+import { env } from 'cloudflare:workers';
+import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
-// Local dev uses a SQLite file through libsql. When moving to Cloudflare D1,
-// replace this with `drizzle(platform.env.DB, { schema })` from 'drizzle-orm/d1';
-// the schema and every query stay the same.
-const client = createClient({ url: process.env.DATABASE_URL || 'file:local.db' });
+type DB = DrizzleD1Database<typeof schema>;
 
-export const db = drizzle(client, { schema });
+let instance: DB | undefined;
+
+// D1 everywhere: on Cloudflare via the real binding, in `npm run dev` via the
+// adapter's local emulation (state in .wrangler/). Created lazily because the
+// binding is only reachable while handling a request, not at build time.
+export const db = new Proxy({} as DB, {
+	get(_, prop) {
+		instance ??= drizzle(env.DB, { schema });
+		return Reflect.get(instance, prop, instance);
+	}
+});
+
 export { schema };

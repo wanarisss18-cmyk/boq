@@ -2,15 +2,18 @@
 
 Web App ติดตามงานของทีม แทนการส่งไฟล์ Excel ผ่าน LINE — ข้อมูลอยู่ที่เดียว ทุกคน Login ด้วยบัญชีตัวเอง และทุกการแก้ไขถูกบันทึกและย้อนกลับได้
 
-**Stack:** SvelteKit 3 (SSR + form actions) · Tailwind 4 · shadcn-svelte · Drizzle ORM · SQLite (libsql) → Cloudflare D1 · Cloudflare Pages
+**Stack:** SvelteKit 3 (SSR + form actions) · Tailwind 4 · shadcn-svelte · Drizzle ORM · Cloudflare D1 · Cloudflare Pages
 
 ## เริ่มใช้งาน
 
 ```bash
 npm install
-npm run db:setup   # สร้างตาราง + นำเข้าข้อมูลจาก data/project_tracking_sample.xlsx
+npm run db:setup   # สร้างตาราง + นำเข้าข้อมูลจาก Excel ลง D1 จำลองในเครื่อง (.wrangler/)
 npm run dev        # http://localhost:5173
 ```
+
+แอปใช้ D1 ทั้งในเครื่องและบน Cloudflare (`import { env } from 'cloudflare:workers'` ใน `src/lib/server/db/index.ts`)
+ตอน `npm run dev` adapter จะจำลอง D1 ให้จาก `wrangler.toml`
 
 ### บัญชีทดสอบ (สำหรับ dev เท่านั้น — ตั้งไว้ใน `scripts/seed.ts`)
 
@@ -24,10 +27,10 @@ npm run dev        # http://localhost:5173
 
 | คำสั่ง | ทำอะไร |
 |---|---|
-| `npm run db:push` | สร้าง/อัปเดตตารางตาม schema |
-| `npm run db:seed [-- file.xlsx]` | **ลบข้อมูลเดิมทั้งหมด** แล้วนำเข้าจาก Excel |
-| `npm run db:generate` | สร้างไฟล์ SQL migration ใน `drizzle/` (ใช้กับ D1) |
-| `npm run db:studio` | เปิด Drizzle Studio ดูข้อมูลในฐานข้อมูล |
+| `npm run db:seed [-- file.xlsx]` | อ่าน Excel → `local.db` (ไฟล์พัก) → สร้าง `data/seed.sql` |
+| `npm run d1:migrate:local` / `d1:seed:local` | สร้างตาราง / ลงข้อมูลใน D1 จำลองในเครื่อง |
+| `npm run d1:migrate:remote` / `d1:seed:remote` | เหมือนกันแต่ลง D1 จริงบน Cloudflare (**seed จะลบข้อมูลเดิมทั้งหมด**) |
+| `npm run db:generate` | สร้างไฟล์ migration ใหม่ใน `drizzle/` หลังแก้ schema |
 | `npm run check` | ตรวจ type |
 
 ## สิทธิ์การใช้งาน
@@ -53,13 +56,10 @@ npm run dev        # http://localhost:5173
 (งานที่เคยเป็น "รอตรวจ" หรือ "ระงับ" จะมีป้าย `[รอตรวจ]` / `[ระงับ]` นำหน้าหมายเหตุ)
 "เกินกำหนด" = ยังไม่ Done และเลยกำหนดส่งแล้ว เทียบกับวันนี้ตามเวลาไทย
 
-## ย้ายไป Cloudflare D1 / Pages
+## Deploy (Cloudflare Pages)
 
-1. `npx wrangler d1 create pm-db` แล้วเพิ่ม binding `DB` ใน `wrangler.toml`
-2. `npm run db:generate` แล้ว `npx wrangler d1 migrations apply pm-db --remote`
-3. ใน `src/lib/server/db/index.ts` เปลี่ยนจาก libsql เป็น `drizzle(platform.env.DB, { schema })` จาก `drizzle-orm/d1`
-   (ส่ง `event.platform` เข้าไปผ่าน `hooks.server.ts`) — schema และ query อื่นใช้ได้เหมือนเดิม
-4. รหัสผ่านใช้ PBKDF2 ผ่าน Web Crypto จึงรันบน Workers ได้เลย
+- `wrangler.toml` กำหนดโฟลเดอร์ผลลัพธ์ (`.svelte-kit/cloudflare`) และ binding `DB` → D1 `boq-db`
+- ตั้งค่า Pages: **Build command** `npm run build` · Node ใช้ 22 จากไฟล์ `.node-version`
+- เมื่อแก้ schema: `npm run db:generate` แล้ว `npm run d1:migrate:remote`
 
-> หมายเหตุ: บนเครื่องนี้ (Node v26) `npm run build` segfault ระหว่าง bundle ฝั่ง client ใน native code ของ Vite/rolldown
-> ส่วน `npm run dev` ทำงานปกติ แนะนำให้ build ด้วย Node LTS (เช่น 22) — ยังไม่ได้ทดสอบ build บน Node เวอร์ชันนั้น
+> Node v26 ทำให้ `npm run build` segfault ใน Vite/rolldown — ให้ build ด้วย Node 22 (ทดสอบแล้วผ่าน)

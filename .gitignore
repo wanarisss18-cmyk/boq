@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 local.db
 local.db-*
 .wrangler
+
+# Generated seed (contains test password hashes)
+data/seed.sql
